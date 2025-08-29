@@ -1,0 +1,107 @@
+name: X (Twitter) Auto Posting
+
+on:
+  # 毎日 09:00 JST (00:00 UTC) にスケジュール実行
+  schedule:
+    - cron: '0 0 * * *'
+  
+  # 手動実行
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'シミュレーションモード (true/false)'
+        required: false
+        default: 'false'
+        type: boolean
+
+# 権限最小化
+permissions:
+  contents: read
+
+env:
+  TZ: Asia/Tokyo
+
+jobs:
+  post-to-x:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Verify environment
+      run: |
+        echo "現在時刻 (JST): $(TZ=Asia/Tokyo date)"
+        echo "Node.js version: $(node --version)"
+        echo "npm version: $(npm --version)"
+        
+    - name: Lint files
+      run: npm run lint
+      
+    - name: Run posting (simulation)
+      if: ${{ inputs.dry_run == 'true' || inputs.dry_run == true }}
+      env:
+        TW_API_KEY: ${{ secrets.TW_API_KEY }}
+        TW_API_KEY_SECRET: ${{ secrets.TW_API_KEY_SECRET }}
+        TW_ACCESS_TOKEN: ${{ secrets.TW_ACCESS_TOKEN }}
+        TW_ACCESS_TOKEN_SECRET: ${{ secrets.TW_ACCESS_TOKEN_SECRET }}
+      run: |
+        echo "=== シミュレーションモード実行 ==="
+        npm run plan
+        npm run run
+        
+    - name: Run posting (production)
+      if: ${{ inputs.dry_run != 'true' && inputs.dry_run != true }}
+      env:
+        TW_API_KEY: ${{ secrets.TW_API_KEY }}
+        TW_API_KEY_SECRET: ${{ secrets.TW_API_KEY_SECRET }}
+        TW_ACCESS_TOKEN: ${{ secrets.TW_ACCESS_TOKEN }}
+        TW_ACCESS_TOKEN_SECRET: ${{ secrets.TW_ACCESS_TOKEN_SECRET }}
+      run: |
+        echo "=== 本番モード実行 (期日到来分のみ) ==="
+        npm run plan
+        node cli/index.js run --due-only --save-log
+        
+    - name: Upload logs
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: posting-logs
+        path: logs/
+        retention-days: 30
+        
+    - name: Commit posted files
+      if: ${{ inputs.dry_run != 'true' && inputs.dry_run != true }}
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        
+        # 変更があるかチェック
+        if [[ -n $(git status --porcelain) ]]; then
+          echo "投稿済みファイルをコミット中..."
+          git add sns/posted/
+          git commit -m "chore: 投稿済みファイルを移動 [skip ci]
+
+          🤖 GitHub Actionsによる自動コミット
+          実行時刻: $(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M:%S JST')"
+          
+          git push
+          echo "コミット完了"
+        else
+          echo "変更なし: コミットをスキップ"
+        fi
+        
+    - name: Notification on failure
+      if: failure()
+      run: |
+        echo "🚨 投稿処理でエラーが発生しました"
+        echo "ログを確認してください: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

@@ -1,0 +1,39 @@
+{
+  "name": "auto-x-posting",
+  "version": "1.0.0",
+  "description": "Automated X (Twitter) posting system with GitHub Actions",
+  "main": "cli/index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node cli/index.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "lint": "node cli/index.js lint",
+    "plan": "node cli/index.js plan",
+    "run": "node cli/index.js run",
+    "migrate-config": "node cli/index.js migrate-config"
+  },
+  "keywords": [
+    "twitter",
+    "x",
+    "automation",
+    "github-actions",
+    "social-media"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "commander": "^11.0.0",
+    "crypto": "^1.0.1"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testMatch": ["**/__tests__/**/*.js", "**/*.test.js"]
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

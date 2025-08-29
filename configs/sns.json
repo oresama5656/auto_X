@@ -1,0 +1,16 @@
+{
+  "posting": {
+    "use": true,
+    "startDate": "auto",
+    "interval": 0.5,
+    "postTime": "auto",
+    "autoTimeOffset": 30,
+    "skipWeekends": false
+  },
+  "twitterApi": {
+    "apiKey": "",
+    "apiKeySecret": "",
+    "accessToken": "",
+    "accessTokenSecret": ""
+  }
+}
