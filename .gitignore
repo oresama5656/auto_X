@@ -63,6 +63,7 @@ tmp/
 temp/
 
 # Runtime configuration (if containing secrets)
+configs/sns.json
 configs/sns.json.local
 configs/*.local.json
 

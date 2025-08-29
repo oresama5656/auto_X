@@ -4,13 +4,13 @@
     "startDate": "auto",
     "interval": 0.5,
     "postTime": "auto",
-    "autoTimeOffset": 30,
+    "autoTimeOffset": -1,
     "skipWeekends": false
   },
   "twitterApi": {
-    "apiKey": "",
-    "apiKeySecret": "",
-    "accessToken": "",
-    "accessTokenSecret": ""
+    "apiKey": "ufvTxcDajgzUAG6CKBsyIvSns",
+    "apiKeySecret": "veqrCJ2PHAomDG0K2T13HZXhjQ0p9YrYhfRzAYmKCL2sFTkMxf",
+    "accessToken": "1958917903828623360-3b2VdNJPHFm02W8pvvVAvYFnuI5sop",
+    "accessTokenSecret": "W3qbE2Mu3kO8bUQixR9HHkoNPEXNKHhxUC3g1SS90wui5"
   }
 }

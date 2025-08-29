@@ -43,6 +43,8 @@ jobs:
         echo "現在時刻 (JST): $(TZ=Asia/Tokyo date)"
         echo "Node.js version: $(node --version)"
         echo "npm version: $(npm --version)"
+        echo "環境変数チェック:"
+        echo "TW_API_KEY is set: $([[ -n "$TW_API_KEY" ]] && echo "YES" || echo "NO")"
         
     - name: Lint files
       run: npm run lint
