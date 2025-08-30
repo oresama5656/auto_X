@@ -87,17 +87,21 @@ jobs:
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
         
+        # posted ディレクトリが存在しない場合は作成
+        mkdir -p sns/posted
+        
         # 変更があるかチェック
         if [[ -n $(git status --porcelain) ]]; then
           echo "投稿済みファイルをコミット中..."
-          git add sns/posted/
+          git add sns/posted/ || echo "sns/posted/ に追加するファイルがありません"
+          git add . || true
           git commit -m "chore: 投稿済みファイルを移動 [skip ci]
 
           🤖 GitHub Actionsによる自動コミット
-          実行時刻: $(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M:%S JST')"
+          実行時刻: $(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M:%S JST')" || echo "コミットするファイルがありません"
           
-          git push
-          echo "コミット完了"
+          git push || echo "プッシュに失敗しました"
+          echo "コミット処理完了"
         else
           echo "変更なし: コミットをスキップ"
         fi
