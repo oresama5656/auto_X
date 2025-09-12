@@ -1,9 +1,10 @@
 {
   "posting": {
     "use": true,
-    "startDate": "2025-08-29",
-    "interval": 0.5,
-    "postTime": "23:40",
+    "scheduleType": "interval",
+    "startDate": "auto",
+    "interval": 0.001,
+    "postTime": "auto",
     "autoTimeOffset": -1,
     "skipWeekends": false
   },

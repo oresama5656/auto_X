@@ -66,9 +66,24 @@ function calculateSchedule(files, config) {
     }));
   }
 
+  // スケジュール方式を判定
+  const scheduleType = posting.scheduleType || 'interval';
+  
+  if (scheduleType === 'fixed') {
+    return calculateFixedSchedule(files, config);
+  } else {
+    return calculateIntervalSchedule(files, config);
+  }
+}
+
+/**
+ * 間隔指定スケジュール計算
+ */
+function calculateIntervalSchedule(files, config) {
+  const { posting } = config;
+  
   let startDate;
   if (posting.startDate === 'auto') {
-    // 次回投稿可能時刻を計算
     startDate = calculatePostTime(config, getJSTDate());
   } else {
     startDate = parseJSTDate(posting.startDate);
@@ -79,15 +94,14 @@ function calculateSchedule(files, config) {
 
   const schedule = [];
   let currentDate = new Date(startDate);
-  const intervalMs = posting.interval * 24 * 60 * 60 * 1000; // 日数をミリ秒に
+  const intervalMs = posting.interval * 24 * 60 * 60 * 1000;
 
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
     
-    // 週末スキップ処理
     if (posting.skipWeekends) {
       while (isWeekend(currentDate)) {
-        currentDate = new Date(currentDate.getTime() + 24 * 60 * 60 * 1000); // 1日追加
+        currentDate = new Date(currentDate.getTime() + 24 * 60 * 60 * 1000);
       }
     }
 
@@ -99,8 +113,81 @@ function calculateSchedule(files, config) {
       scheduled: true
     });
 
-    // 次の投稿日を計算
     currentDate = new Date(currentDate.getTime() + intervalMs);
+  }
+
+  return schedule;
+}
+
+/**
+ * 固定時刻スケジュール計算
+ */
+function calculateFixedSchedule(files, config) {
+  const { posting } = config;
+  
+  if (!posting.fixedTimes || !Array.isArray(posting.fixedTimes)) {
+    throw new Error('固定時刻モードでは fixedTimes 配列が必要です');
+  }
+
+  let startDate;
+  if (posting.startDate === 'auto') {
+    startDate = getJSTDate();
+  } else {
+    startDate = parseJSTDate(posting.startDate);
+    if (!startDate) {
+      throw new Error(`無効な開始日付: ${posting.startDate}`);
+    }
+  }
+
+  const schedule = [];
+  let currentDay = new Date(startDate);
+  currentDay.setHours(0, 0, 0, 0); // 開始日の00:00に設定
+  
+  let fileIndex = 0;
+  let timeIndex = 0;
+
+  while (fileIndex < files.length) {
+    // 週末スキップ処理
+    if (posting.skipWeekends && isWeekend(currentDay)) {
+      currentDay = new Date(currentDay.getTime() + 24 * 60 * 60 * 1000);
+      timeIndex = 0; // 新しい日は最初の時刻から
+      continue;
+    }
+
+    // 現在の日の投稿時刻を取得
+    const timeStr = posting.fixedTimes[timeIndex];
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    const scheduledTime = new Date(currentDay);
+    scheduledTime.setHours(hours, minutes, 0, 0);
+
+    // 開始日時より前の時刻はスキップ
+    if (scheduledTime < startDate) {
+      timeIndex++;
+      if (timeIndex >= posting.fixedTimes.length) {
+        // 今日の全時刻を使い切った場合、翌日へ
+        currentDay = new Date(currentDay.getTime() + 24 * 60 * 60 * 1000);
+        timeIndex = 0;
+      }
+      continue;
+    }
+
+    const file = files[fileIndex];
+    schedule.push({
+      file: file.name,
+      path: file.path,
+      content: file.content,
+      scheduledTime: new Date(scheduledTime),
+      scheduled: true
+    });
+
+    fileIndex++;
+    timeIndex++;
+
+    // その日の全時刻を使い切った場合、翌日へ
+    if (timeIndex >= posting.fixedTimes.length) {
+      currentDay = new Date(currentDay.getTime() + 24 * 60 * 60 * 1000);
+      timeIndex = 0;
+    }
   }
 
   return schedule;

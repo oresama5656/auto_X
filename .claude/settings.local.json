@@ -8,7 +8,8 @@
       "Bash(gh workflow:*)",
       "Bash(cp:*)",
       "Bash(mkdir:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []

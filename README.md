@@ -103,14 +103,24 @@ node cli/index.js run --due-only
 
 ## ⚙️ 設定ファイル (configs/sns.json)
 
+### 基本設定項目
+
 ```json
 {
   "posting": {
     "use": true,                    # スケジューリング有効/無効
+    "scheduleType": "interval",     # "interval"(間隔指定) または "fixed"(固定時刻)
     "startDate": "auto",            # 開始日 ("auto" または "YYYY-MM-DD")
+    
+    // interval モード用設定
     "interval": 0.5,                # 投稿間隔 (日数)
     "postTime": "auto",             # 投稿時刻 ("auto" または "HH:MM")
     "autoTimeOffset": 30,           # auto時のオフセット (分)
+    
+    // fixed モード用設定
+    "fixedTimes": ["09:00", "12:00", "15:00", "18:00", "21:00"],
+    
+    // 共通設定
     "skipWeekends": false           # 週末スキップ
   },
   "twitterApi": {
@@ -122,38 +132,87 @@ node cli/index.js run --due-only
 }
 ```
 
-### 設定例
+### スケジュール設定例
 
+#### 間隔指定モード (interval)
 ```json
+// 3時間おきに投稿
+{
+  "posting": {
+    "scheduleType": "interval",
+    "interval": 0.125,              // 3時間 = 0.125日
+    "startDate": "auto",
+    "postTime": "auto"
+  }
+}
+
 // 毎日午前9時に投稿
 {
   "posting": {
-    "use": true,
-    "startDate": "2024-01-01",
-    "interval": 1.0,
-    "postTime": "09:00",
+    "scheduleType": "interval",
+    "interval": 1.0,                // 1日間隔
+    "postTime": "09:00",            // 固定時刻
     "skipWeekends": true
   }
 }
 
-// 12時間間隔で投稿（現在時刻から30分後開始）
+// 1時間おきに投稿（現在時刻から30分後開始）
 {
   "posting": {
-    "use": true,
-    "startDate": "auto",
-    "interval": 0.5,
+    "scheduleType": "interval", 
+    "interval": 0.0417,             // 1時間 = 0.0417日
     "postTime": "auto",
     "autoTimeOffset": 30
   }
 }
 ```
 
+#### 固定時刻モード (fixed)
+```json
+// 1日5回、決まった時間に投稿
+{
+  "posting": {
+    "scheduleType": "fixed",
+    "fixedTimes": ["09:00", "12:00", "15:00", "18:00", "21:00"],
+    "startDate": "auto"
+  }
+}
+
+// ビジネス時間内のみ投稿
+{
+  "posting": {
+    "scheduleType": "fixed", 
+    "fixedTimes": ["10:00", "14:00", "17:00"],
+    "skipWeekends": true
+  }
+}
+
+// 頻繁投稿（2時間おき）
+{
+  "posting": {
+    "scheduleType": "fixed",
+    "fixedTimes": ["08:00", "10:00", "12:00", "14:00", "16:00", "18:00", "20:00", "22:00"]
+  }
+}
+```
+
+### 間隔設定の参考値
+
+| 間隔 | interval 値 | 説明 |
+|------|------------|------|
+| 30分 | 0.0208 | 30分 ÷ (24時間 × 60分) |
+| 1時間 | 0.0417 | 1時間 ÷ 24時間 |
+| 3時間 | 0.125 | 3時間 ÷ 24時間 |
+| 6時間 | 0.25 | 6時間 ÷ 24時間 |
+| 12時間 | 0.5 | 12時間 ÷ 24時間 |
+| 1日 | 1.0 | 24時間 ÷ 24時間 |
+
 ## 🤖 GitHub Actions
 
-毎日 09:00 JST に自動実行されます。手動実行も可能です。
+毎時00分に自動実行され、柔軟な投稿スケジュールを実現します。手動実行も可能です。
 
 ### 自動実行
-- **スケジュール**: 毎日 09:00 JST (cron: '0 0 * * *')
+- **スケジュール**: 毎時00分 (cron: '0 * * * *')
 - **実行内容**: 期日到来分のみ投稿
 - **結果**: 投稿済みファイルを `sns/posted/` に移動してコミット
 
@@ -174,20 +233,48 @@ echo "新しい投稿内容です" > sns/003-sns.txt
 npm run lint
 ```
 
-### 2. スケジュール確認
+### 2. スケジュール設定
+```bash
+# 現在の設定確認
+cat configs/sns.json
+
+# 3時間おきに投稿する場合
+{
+  "posting": {
+    "scheduleType": "interval",
+    "interval": 0.125
+  }
+}
+
+# 決まった時間に投稿する場合  
+{
+  "posting": {
+    "scheduleType": "fixed",
+    "fixedTimes": ["09:00", "12:00", "14:00", "18:00", "21:00"]
+  }
+}
+```
+
+### 3. スケジュール確認
 ```bash
 # 投稿予定を確認
 npm run plan
 ```
 
-### 3. 自動投稿
-- GitHub Actions が毎日自動実行
+### 4. 自動投稿
+- GitHub Actions が毎時自動実行
 - 期日到来分のみ投稿
 - 投稿成功後、ファイルを `sns/posted/` に移動
 
-### 4. 結果確認
+### 5. 結果確認
 - Actions タブでログ確認
 - `sns/posted/` ディレクトリで投稿済みファイル確認
+
+### スケジュール変更の手順
+1. `configs/sns.json` を編集
+2. `npm run plan` でスケジュール確認
+3. GitHub Actions の手動実行でテスト（シミュレーションモード）
+4. 問題なければ自動実行に任せる
 
 ## 🛠️ CLI コマンド
 
