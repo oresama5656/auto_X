@@ -1,12 +1,11 @@
 {
   "posting": {
     "use": true,
-    "scheduleType": "interval",
     "startDate": "auto",
-    "interval": 0.001,
-    "postTime": "auto",
-    "autoTimeOffset": -1,
-    "skipWeekends": false
+    "skipWeekends": false,
+    "times": [
+      "15:46"
+    ]
   },
   "twitterApi": {
     "apiKey": "",
