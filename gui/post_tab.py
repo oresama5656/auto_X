@@ -128,7 +128,7 @@ class PostTab:
         # 情報ラベル（使用方法のヒント）
         self.info_label = ttk.Label(
             self.status_frame,
-            text="※ sns/ディレクトリの*-sns.txtファイルを表示（posted/内は除外）",
+            text="※ sns/ディレクトリの*.txtファイルを表示（README.txt、posted/内は除外）",
             font=("Arial", 8),
             foreground="gray"
         )

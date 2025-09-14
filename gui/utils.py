@@ -64,22 +64,25 @@ def save_config(config: Dict[str, Any], config_path: str = None) -> None:
 def get_sns_files() -> List[str]:
     """
     sns/ディレクトリから投稿待ちファイルを取得
-    
+
     Returns:
         ファイル名のリスト（昇順ソート済み）
     """
     sns_dir = Path.cwd() / 'sns'
-    
+
     if not sns_dir.exists():
         return []
-    
-    # *-sns.txt パターンのファイルを検索（posted/は除外）
+
+    # *.txt パターンのファイルを検索（CLI と同じ形式）
     files = []
-    for file_path in sns_dir.glob('*-sns.txt'):
+    for file_path in sns_dir.glob('*.txt'):
+        # README.txt は除外
+        if file_path.name == 'README.txt':
+            continue
         # postedディレクトリ内は除外
         if 'posted' not in str(file_path):
             files.append(file_path.name)
-    
+
     # ファイル名でソート（投稿順序と一致）
     return sorted(files)
 

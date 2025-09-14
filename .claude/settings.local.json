@@ -10,7 +10,12 @@
       "Bash(mkdir:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(node:*)",
+      "Bash(TW_API_KEY=test TW_API_KEY_SECRET=test TW_ACCESS_TOKEN=test TW_ACCESS_TOKEN_SECRET=test node cli/index.js run)",
+      "Bash(TW_API_KEY=test TW_API_KEY_SECRET=test TW_ACCESS_TOKEN=test TW_ACCESS_TOKEN_SECRET=test node cli/index.js run --due-only)",
+      "Bash(TW_API_KEY=test TW_API_KEY_SECRET=test TW_ACCESS_TOKEN=test TW_ACCESS_TOKEN_SECRET=test node cli/index.js plan)",
+      "Bash(git reset:*)"
     ],
     "deny": [],
     "ask": []

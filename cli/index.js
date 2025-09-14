@@ -17,7 +17,7 @@ program
   .command('plan')
   .description('投稿スケジュールを表示')
   .option('-c, --config <path>', '設定ファイルパス', 'configs/sns.json')
-  .option('-s, --sns-dir <path>', 'SNSディレクトリパス', 'sns')
+  .option('-s, --sns-dir <path>', 'SNSディレクトリパス')
   .action(async (options) => {
     try {
       const result = await planSchedule(options);
@@ -41,7 +41,7 @@ program
   .command('run')
   .description('投稿を実行')
   .option('-c, --config <path>', '設定ファイルパス', 'configs/sns.json')
-  .option('-s, --sns-dir <path>', 'SNSディレクトリパス', 'sns')
+  .option('-s, --sns-dir <path>', 'SNSディレクトリパス')
   .option('--due-only', '期日到来分のみ投稿（実投稿）', false)
   .option('--save-log', 'ログをファイルに保存', false)
   .action(async (options) => {
@@ -82,7 +82,7 @@ program
 program
   .command('lint')
   .description('投稿ファイルを検証')
-  .option('-s, --sns-dir <path>', 'SNSディレクトリパス', 'sns')
+  .option('-s, --sns-dir <path>', 'SNSディレクトリパス')
   .action(async (options) => {
     try {
       const result = await lintSnsFiles(options);

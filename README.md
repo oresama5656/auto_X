@@ -233,12 +233,18 @@ node cli/index.js run --due-only
 
 ### 1. 投稿ファイルの準備
 ```bash
-# ファイルを sns/ ディレクトリに配置
-echo "新しい投稿内容です" > sns/003-sns.txt
+# ファイルを sns/ ディレクトリに配置（.txt拡張子ならファイル名は自由）
+echo "新しい投稿内容です" > sns/004-my-post.txt
+# または
+echo "お知らせです" > sns/announcement.txt
 
 # 文字数チェック
 npm run lint
 ```
+
+**ファイル名規則**:
+- `*.txt` なら何でも投稿対象（`README.txt`は除外）
+- 推奨: `001-sns.txt`, `002-update.txt` など数字プレフィックス付き
 
 ### 2. スケジュール設定
 ```bash

@@ -1,4 +1,4 @@
-const { loadConfig, validateConfig } = require('./config');
+const { loadConfig, validateConfig, saveConfig } = require('./config');
 const { getSnsFiles, lintFiles, moveToPosted } = require('./file-manager');
 const { calculateSchedule, filterDueItems, displaySchedule } = require('./scheduler');
 const { postTweet } = require('./twitter-api');
@@ -12,7 +12,10 @@ async function planSchedule(options = {}) {
     log('=== スケジュール計画開始 ===');
     
     const config = await loadConfig(options.configPath);
-    const files = await getSnsFiles(options.snsDir);
+
+    // フォルダパス決定（CLI オプション > 設定ファイル > デフォルト）
+    const snsDir = options.snsDir || config.folders.input;
+    const files = await getSnsFiles(snsDir);
     
     if (files.length === 0) {
       log('投稿対象ファイルが見つかりません');
@@ -51,7 +54,9 @@ async function runPosting(options = {}) {
       return { success: false, errors: configErrors };
     }
 
-    const files = await getSnsFiles(options.snsDir);
+    // フォルダパス決定（CLI オプション > 設定ファイル > デフォルト）
+    const snsDir = options.snsDir || config.folders.input;
+    const files = await getSnsFiles(snsDir);
     if (files.length === 0) {
       log('投稿対象ファイルが見つかりません');
       return { success: true, results: [] };
@@ -84,7 +89,7 @@ async function runPosting(options = {}) {
         if (result.success) {
           // 実際の投稿の場合のみファイル移動
           if (!isSimulation) {
-            await moveToPosted(item.path, true);
+            await moveToPosted(item.path, true, config.folders.posted);
           }
           
           results.push({
@@ -140,7 +145,9 @@ async function lintSnsFiles(options = {}) {
   try {
     log('=== ファイル検証開始 ===');
     
-    const results = await lintFiles(options.snsDir);
+    const config = await loadConfig(options.configPath);
+    const snsDir = options.snsDir || config.folders.input;
+    const results = await lintFiles(snsDir);
     
     return {
       success: true,

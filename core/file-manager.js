@@ -123,11 +123,22 @@ async function lintFiles(snsDir = null) {
 /**
  * 投稿後にファイルを移動
  */
-async function moveToPosted(filePath, success = true) {
+async function moveToPosted(filePath, success = true, postedDirPath = null) {
   try {
     const filename = path.basename(filePath);
     const snsDir = path.dirname(filePath);
-    const postedDir = path.join(snsDir, 'posted');
+
+    // postedディレクトリのパス決定
+    let postedDir;
+    if (postedDirPath) {
+      // 絶対パスの場合はそのまま、相対パスの場合はプロジェクトルートからの相対
+      postedDir = path.isAbsolute(postedDirPath)
+        ? postedDirPath
+        : path.join(process.cwd(), postedDirPath);
+    } else {
+      // 従来の動作（投稿元ディレクトリ内のpostedフォルダ）
+      postedDir = path.join(snsDir, 'posted');
+    }
     
     // postedディレクトリの作成
     await fs.mkdir(postedDir, { recursive: true });

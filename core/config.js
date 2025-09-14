@@ -8,9 +8,12 @@ const { log } = require('./logger');
 const DEFAULT_CONFIG = {
   posting: {
     use: true,
-    times: ['09:00', '12:00', '15:00', '18:00', '21:00'],
     startDate: 'auto',
     skipWeekends: false
+  },
+  folders: {
+    input: 'sns',
+    posted: 'sns/posted'
   },
   twitterApi: {
     apiKey: '',
@@ -111,6 +114,7 @@ async function loadConfig(configPath = null) {
     // デフォルト値でマージ
     const mergedConfig = {
       posting: { ...DEFAULT_CONFIG.posting, ...config.posting },
+      folders: { ...DEFAULT_CONFIG.folders, ...config.folders },
       twitterApi: { ...DEFAULT_CONFIG.twitterApi, ...config.twitterApi }
     };
 
@@ -162,7 +166,7 @@ function validateConfig(config) {
 
   // posting設定チェック
   const times = config.posting.times || config.posting.fixedTimes; // backward compatibility
-  
+
   if (!times || !Array.isArray(times)) {
     errors.push('投稿時刻の設定が必要です (times配列)');
   } else if (times.length === 0) {
@@ -174,6 +178,14 @@ function validateConfig(config) {
         errors.push(`無効な時刻フォーマット: ${time} (HH:MM形式で入力してください)`);
       }
     }
+  }
+
+  // folders設定チェック
+  if (!config.folders.input) {
+    errors.push('入力フォルダパスが設定されていません');
+  }
+  if (!config.folders.posted) {
+    errors.push('投稿済みフォルダパスが設定されていません');
   }
 
   return errors;
