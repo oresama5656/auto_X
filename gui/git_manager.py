@@ -196,10 +196,133 @@ class GitManager:
         message = f"feat: {', '.join(changes)}\n\n🤖 Generated with [Claude Code](https://claude.ai/code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>"
         return message
     
+    def pull_from_remote(
+        self,
+        progress_callback: Optional[Callable[[str], None]] = None,
+        completion_callback: Optional[Callable[[bool, str], None]] = None
+    ):
+        """
+        リモートからpullを実行（バックグラウンド実行）
+
+        Args:
+            progress_callback: 進行状況コールバック
+            completion_callback: 完了コールバック(成功フラグ, メッセージ)
+        """
+        def execute():
+            try:
+                if progress_callback:
+                    progress_callback("最新情報を取得中...")
+
+                # git pull
+                pull_result = subprocess.run(
+                    ['git', 'pull'],
+                    cwd=self.work_dir,
+                    capture_output=True,
+                    text=True,
+                    timeout=60
+                )
+
+                if pull_result.returncode != 0:
+                    # マージ競合の可能性をチェック
+                    if "CONFLICT" in pull_result.stdout or "CONFLICT" in pull_result.stderr:
+                        raise Exception(f"マージ競合が発生しました。手動で解決してください。")
+                    else:
+                        raise Exception(f"git pull失敗: {pull_result.stderr}")
+
+                # 結果解析
+                output = pull_result.stdout.strip()
+                if "Already up to date" in output:
+                    message = "既に最新状態です"
+                elif "Fast-forward" in output or "Merge made" in output:
+                    message = "最新情報を取得しました"
+                else:
+                    message = "同期が完了しました"
+
+                if completion_callback:
+                    completion_callback(True, message)
+
+            except subprocess.TimeoutExpired:
+                if completion_callback:
+                    completion_callback(False, "Git pullがタイムアウトしました")
+            except Exception as e:
+                if completion_callback:
+                    completion_callback(False, f"Git pullエラー: {str(e)}")
+
+        # バックグラウンドで実行
+        thread = threading.Thread(target=execute, daemon=True)
+        thread.start()
+
+    def check_remote_changes(self) -> dict:
+        """
+        リモートの変更をチェック
+
+        Returns:
+            {
+                'has_changes': bool,  # リモートに変更あり
+                'behind_count': int,  # ローカルが遅れているコミット数
+                'ahead_count': int,   # ローカルが進んでいるコミット数
+                'error': str         # エラーメッセージ
+            }
+        """
+        try:
+            # git fetch
+            fetch_result = subprocess.run(
+                ['git', 'fetch'],
+                cwd=self.work_dir,
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+
+            if fetch_result.returncode != 0:
+                return {'error': f'git fetch失敗: {fetch_result.stderr}'}
+
+            # リモートとの差分をチェック
+            status_result = subprocess.run(
+                ['git', 'status', '-b', '--porcelain'],
+                cwd=self.work_dir,
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+
+            if status_result.returncode != 0:
+                return {'error': 'git status取得失敗'}
+
+            # 第一行からブランチ情報を解析
+            lines = status_result.stdout.strip().split('\n')
+            if not lines:
+                return {'has_changes': False, 'behind_count': 0, 'ahead_count': 0}
+
+            branch_line = lines[0]
+            behind_count = 0
+            ahead_count = 0
+
+            # [behind N] または [ahead N] を検索
+            import re
+            behind_match = re.search(r'\[behind (\d+)\]', branch_line)
+            ahead_match = re.search(r'\[ahead (\d+)\]', branch_line)
+
+            if behind_match:
+                behind_count = int(behind_match.group(1))
+            if ahead_match:
+                ahead_count = int(ahead_match.group(1))
+
+            return {
+                'has_changes': behind_count > 0,
+                'behind_count': behind_count,
+                'ahead_count': ahead_count
+            }
+
+        except subprocess.TimeoutExpired:
+            return {'error': 'Git操作がタイムアウトしました'}
+        except Exception as e:
+            return {'error': str(e)}
+
     def is_git_available(self) -> bool:
         """
         Gitコマンドが利用可能か確認
-        
+
         Returns:
             Git利用可能な場合True
         """

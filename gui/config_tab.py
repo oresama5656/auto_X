@@ -79,7 +79,48 @@ class ConfigTab:
             variable=self.skip_weekends_var
         )
         self.skip_weekends_check.grid(row=1, column=0, columnspan=2, sticky='w', padx=5, pady=2)
-        
+
+        # === フォルダ設定セクション ===
+        self.folder_section = ttk.LabelFrame(self.main_frame, text="フォルダ設定", padding=10)
+
+        # 入力フォルダ
+        ttk.Label(self.folder_section, text="投稿ファイルフォルダ:").grid(row=0, column=0, sticky='w', pady=2)
+        self.input_folder_var = tk.StringVar(value="sns")
+        input_folder_frame = ttk.Frame(self.folder_section)
+        input_folder_frame.grid(row=1, column=0, sticky='ew', pady=2)
+        input_folder_frame.columnconfigure(0, weight=1)
+
+        self.input_folder_entry = ttk.Entry(input_folder_frame, textvariable=self.input_folder_var, width=40)
+        self.input_folder_entry.grid(row=0, column=0, sticky='ew', padx=(0, 5))
+
+        self.input_folder_button = ttk.Button(
+            input_folder_frame,
+            text="選択",
+            command=self.select_input_folder,
+            width=8
+        )
+        self.input_folder_button.grid(row=0, column=1)
+
+        # 投稿済みフォルダ
+        ttk.Label(self.folder_section, text="投稿済みフォルダ:").grid(row=2, column=0, sticky='w', pady=(10, 2))
+        self.posted_folder_var = tk.StringVar(value="sns/posted")
+        posted_folder_frame = ttk.Frame(self.folder_section)
+        posted_folder_frame.grid(row=3, column=0, sticky='ew', pady=2)
+        posted_folder_frame.columnconfigure(0, weight=1)
+
+        self.posted_folder_entry = ttk.Entry(posted_folder_frame, textvariable=self.posted_folder_var, width=40)
+        self.posted_folder_entry.grid(row=0, column=0, sticky='ew', padx=(0, 5))
+
+        self.posted_folder_button = ttk.Button(
+            posted_folder_frame,
+            text="選択",
+            command=self.select_posted_folder,
+            width=8
+        )
+        self.posted_folder_button.grid(row=0, column=1)
+
+        self.folder_section.columnconfigure(0, weight=1)
+
         # === 操作ボタンセクション ===
         self.button_section = ttk.Frame(self.main_frame)
         
@@ -134,6 +175,9 @@ class ConfigTab:
         
         # 共通設定
         self.common_section.pack(fill='x', pady=(0, 10))
+
+        # フォルダ設定
+        self.folder_section.pack(fill='x', pady=(0, 10))
         
         # ボタン
         self.button_section.pack(fill='x', pady=(0, 10))
@@ -166,6 +210,11 @@ class ConfigTab:
             
             # 投稿時刻設定（backward compatibility）
             times = posting.get('times') or posting.get('fixedTimes', [])
+
+            # フォルダ設定
+            folders = self.config.get('folders', {})
+            self.input_folder_var.set(folders.get('input', 'sns'))
+            self.posted_folder_var.set(folders.get('posted', 'sns/posted'))
             self.times_var.set(format_fixed_times(times))
             
             # 共通設定
@@ -209,10 +258,16 @@ class ConfigTab:
             posting['times'] = parse_fixed_times(self.times_var.get())
             posting['startDate'] = self.start_date_var.get().strip() or 'auto'
             posting['skipWeekends'] = self.skip_weekends_var.get()
-            
+
+            # フォルダ設定を保存
+            if 'folders' not in self.config:
+                self.config['folders'] = {}
+            self.config['folders']['input'] = self.input_folder_var.get()
+            self.config['folders']['posted'] = self.posted_folder_var.get()
+
             # 旧設定項目をクリア
             posting.pop('scheduleType', None)
-            posting.pop('interval', None) 
+            posting.pop('interval', None)
             posting.pop('postTime', None)
             posting.pop('autoTimeOffset', None)
             posting.pop('fixedTimes', None)
@@ -246,7 +301,19 @@ class ConfigTab:
                 if not validate_time_format(time_str):
                     messagebox.showerror("入力エラー", f"無効な時刻形式: {time_str}\nHH:MM形式で入力してください。")
                     return False
-            
+
+            # フォルダパスの検証
+            input_folder = self.input_folder_var.get().strip()
+            posted_folder = self.posted_folder_var.get().strip()
+
+            if not input_folder:
+                messagebox.showerror("入力エラー", "投稿ファイルフォルダを入力してください。")
+                return False
+
+            if not posted_folder:
+                messagebox.showerror("入力エラー", "投稿済みフォルダを入力してください。")
+                return False
+
             return True
             
         except ValueError as e:
@@ -265,21 +332,38 @@ class ConfigTab:
                 messagebox.showerror("エラー", "Gitリポジトリではありません。\nGitが初期化されているか確認してください。")
                 return
             
+            # Push前のリモート変更チェック
+            remote_status = self.git_manager.check_remote_changes()
+            if 'error' in remote_status:
+                messagebox.showerror("エラー", f"リモートチェックに失敗しました：\n{remote_status['error']}")
+                return
+
+            if remote_status.get('has_changes', False):
+                behind_count = remote_status.get('behind_count', 0)
+                messagebox.showwarning(
+                    "同期が必要",
+                    f"⚠️ リモートに{behind_count}件の新しい変更があります。\n\n"
+                    "先に同期してください：\n"
+                    "• GUIを再起動すると自動で同期されます\n"
+                    "• または手動で `git pull` を実行してください"
+                )
+                return
+
             # まず設定保存
             self.save_config()
-            
+
             # GitHub Actions最適化
             times_list = parse_fixed_times(self.times_var.get())
             workflow_updated = update_workflow_cron(times_list)
-            
+
             # 変更対象ファイル
             files_to_commit = ['configs/sns.json']
             if workflow_updated:
                 files_to_commit.append('.github/workflows/sns.yml')
-            
+
             # コミットメッセージ生成
             commit_msg = self.git_manager.generate_commit_message(files_to_commit)
-            
+
             # 進行状況ダイアログ
             progress_dialog = self._create_progress_dialog()
             
@@ -385,3 +469,53 @@ class ConfigTab:
                 
         except Exception:
             self.frequency_label.config(text="GitHub Actions実行頻度: エラー", foreground="red")
+
+    def select_input_folder(self):
+        """投稿ファイルフォルダを選択"""
+        from tkinter import filedialog
+        import os
+
+        # 現在の設定値を初期ディレクトリとして使用
+        current_folder = self.input_folder_var.get()
+        initial_dir = os.path.join(os.getcwd(), current_folder) if current_folder else os.getcwd()
+
+        selected_folder = filedialog.askdirectory(
+            title="投稿ファイルフォルダを選択",
+            initialdir=initial_dir
+        )
+
+        if selected_folder:
+            # プロジェクトルートからの相対パスに変換
+            try:
+                rel_path = os.path.relpath(selected_folder, os.getcwd())
+                # Windowsのバックスラッシュをスラッシュに変換
+                rel_path = rel_path.replace(os.sep, '/')
+                self.input_folder_var.set(rel_path)
+            except ValueError:
+                # 相対パス変換に失敗した場合は絶対パスをそのまま使用
+                self.input_folder_var.set(selected_folder)
+
+    def select_posted_folder(self):
+        """投稿済みフォルダを選択"""
+        from tkinter import filedialog
+        import os
+
+        # 現在の設定値を初期ディレクトリとして使用
+        current_folder = self.posted_folder_var.get()
+        initial_dir = os.path.join(os.getcwd(), current_folder) if current_folder else os.getcwd()
+
+        selected_folder = filedialog.askdirectory(
+            title="投稿済みフォルダを選択",
+            initialdir=initial_dir
+        )
+
+        if selected_folder:
+            # プロジェクトルートからの相対パスに変換
+            try:
+                rel_path = os.path.relpath(selected_folder, os.getcwd())
+                # Windowsのバックスラッシュをスラッシュに変換
+                rel_path = rel_path.replace(os.sep, '/')
+                self.posted_folder_var.set(rel_path)
+            except ValueError:
+                # 相対パス変換に失敗した場合は絶対パスをそのまま使用
+                self.posted_folder_var.set(selected_folder)

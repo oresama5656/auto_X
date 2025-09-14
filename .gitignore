@@ -63,7 +63,8 @@ tmp/
 temp/
 
 # Runtime configuration (if containing secrets)
-configs/sns.json
+# Note: sns.json は設定管理のためGit管理対象
+# API keys are managed via environment variables for security
 configs/sns.json.local
 configs/*.local.json
 
@@ -74,3 +75,6 @@ configs/*.local.json
 # Test artifacts
 test-results/
 coverage/
+
+# Note: sns/ folder and posting files (*.txt) are intentionally tracked
+# Pull-first strategy prevents duplicate posting issues
