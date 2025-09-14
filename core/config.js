@@ -8,15 +8,8 @@ const { log } = require('./logger');
 const DEFAULT_CONFIG = {
   posting: {
     use: true,
-    scheduleType: 'interval', // 'interval' または 'fixed'
+    times: ['09:00', '12:00', '15:00', '18:00', '21:00'],
     startDate: 'auto',
-    // interval モード用設定
-    interval: 0.5,
-    postTime: 'auto',
-    autoTimeOffset: 30,
-    // fixed モード用設定
-    fixedTimes: ['09:00', '12:00', '15:00', '18:00', '21:00'],
-    // 共通設定
     skipWeekends: false
   },
   twitterApi: {
@@ -168,27 +161,19 @@ function validateConfig(config) {
   }
 
   // posting設定チェック
-  const scheduleType = config.posting.scheduleType || 'interval';
+  const times = config.posting.times || config.posting.fixedTimes; // backward compatibility
   
-  if (scheduleType === 'interval') {
-    if (config.posting.interval <= 0) {
-      errors.push('投稿間隔は0より大きい値を設定してください');
-    }
-  } else if (scheduleType === 'fixed') {
-    if (!config.posting.fixedTimes || !Array.isArray(config.posting.fixedTimes)) {
-      errors.push('固定時刻モードでは fixedTimes 配列が必要です');
-    } else if (config.posting.fixedTimes.length === 0) {
-      errors.push('fixedTimes 配列は少なくとも1つの時刻が必要です');
-    } else {
-      // 時刻フォーマットチェック
-      for (const time of config.posting.fixedTimes) {
-        if (!/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(time)) {
-          errors.push(`無効な時刻フォーマット: ${time} (HH:MM形式で入力してください)`);
-        }
+  if (!times || !Array.isArray(times)) {
+    errors.push('投稿時刻の設定が必要です (times配列)');
+  } else if (times.length === 0) {
+    errors.push('少なくとも1つの投稿時刻が必要です');
+  } else {
+    // 時刻フォーマットチェック
+    for (const time of times) {
+      if (!/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(time)) {
+        errors.push(`無効な時刻フォーマット: ${time} (HH:MM形式で入力してください)`);
       }
     }
-  } else {
-    errors.push(`無効なスケジュールタイプ: ${scheduleType} ('interval' または 'fixed' を指定してください)`);
   }
 
   return errors;
