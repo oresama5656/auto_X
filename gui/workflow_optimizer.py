@@ -13,33 +13,35 @@ from typing import List
 
 def optimize_cron_for_times(times: List[str]) -> str:
     """
-    投稿時刻リストから最適化されたcron式を生成
-    
+    投稿時刻リストから最適化されたcron式を生成（JST→UTC変換）
+
     Args:
-        times: 投稿時刻のリスト ["09:00", "12:00", "18:00"]
-        
+        times: JST投稿時刻のリスト ["09:00", "12:00", "18:00"]
+
     Returns:
-        cron式 "0 9,12,18 * * *"
+        UTC基準のcron式 "0 0,3,9 * * *"
     """
     if not times:
         # デフォルトは毎時実行
         return '0 * * * *'
-    
-    # 時刻から時間を抽出
-    hours = []
+
+    # JST時刻をUTC時刻に変換
+    utc_hours = []
     for time_str in times:
         try:
-            hour = int(time_str.split(':')[0])
-            hours.append(hour)
+            jst_hour = int(time_str.split(':')[0])
+            # JST → UTC 変換（JST - 9時間）
+            utc_hour = (jst_hour - 9) % 24
+            utc_hours.append(utc_hour)
         except (ValueError, IndexError):
             continue
-    
-    if not hours:
+
+    if not utc_hours:
         return '0 * * * *'
-    
+
     # 重複を除去してソート
-    unique_hours = sorted(set(hours))
-    
+    unique_hours = sorted(set(utc_hours))
+
     # cron式を生成
     hours_str = ','.join(map(str, unique_hours))
     return f'0 {hours_str} * * *'

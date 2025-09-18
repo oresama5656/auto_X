@@ -54,6 +54,7 @@ function calculateSchedule(files, config) {
   let startDate;
   if (posting.startDate === 'auto') {
     startDate = getJSTDate();
+    startDate.setHours(0, 0, 0, 0); // 当日の00:00に設定（過去の投稿時刻も有効にする）
   } else {
     startDate = parseJSTDate(posting.startDate);
     if (!startDate) {
