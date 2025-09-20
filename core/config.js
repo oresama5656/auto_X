@@ -3,14 +3,9 @@ const path = require('path');
 const { log } = require('./logger');
 
 /**
- * 設定ファイルのデフォルト値
+ * 設定ファイルのデフォルト値（簡略化版）
  */
 const DEFAULT_CONFIG = {
-  posting: {
-    use: true,
-    startDate: 'auto',
-    skipWeekends: false
-  },
   folders: {
     input: 'sns',
     posted: 'sns/posted'
@@ -151,41 +146,27 @@ async function saveConfig(config, configPath = null) {
 }
 
 /**
- * 設定を検証
+ * 設定を検証（簡略化版）
  */
 function validateConfig(config) {
   const errors = [];
 
-  // API認証情報チェック
-  const requiredApiKeys = ['apiKey', 'apiKeySecret', 'accessToken', 'accessTokenSecret'];
-  for (const key of requiredApiKeys) {
-    if (!config.twitterApi[key]) {
-      errors.push(`Twitter API設定が不足: ${key}`);
-    }
-  }
-
-  // posting設定チェック
-  const times = config.posting.times || config.posting.fixedTimes; // backward compatibility
-
-  if (!times || !Array.isArray(times)) {
-    errors.push('投稿時刻の設定が必要です (times配列)');
-  } else if (times.length === 0) {
-    errors.push('少なくとも1つの投稿時刻が必要です');
-  } else {
-    // 時刻フォーマットチェック
-    for (const time of times) {
-      if (!/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(time)) {
-        errors.push(`無効な時刻フォーマット: ${time} (HH:MM形式で入力してください)`);
-      }
-    }
-  }
-
   // folders設定チェック
+  if (!config.folders) {
+    errors.push('フォルダ設定が見つかりません');
+    return errors;
+  }
+
   if (!config.folders.input) {
     errors.push('入力フォルダパスが設定されていません');
   }
   if (!config.folders.posted) {
     errors.push('投稿済みフォルダパスが設定されていません');
+  }
+
+  // twitterApi設定チェック（基本的な存在確認のみ）
+  if (!config.twitterApi) {
+    errors.push('Twitter API設定が見つかりません');
   }
 
   return errors;

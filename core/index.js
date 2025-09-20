@@ -1,52 +1,71 @@
 const { loadConfig, validateConfig, saveConfig } = require('./config');
 const { getSnsFiles, lintFiles, moveToPosted } = require('./file-manager');
-const { calculateSchedule, filterDueItems, displaySchedule } = require('./scheduler');
 const { postTweet } = require('./twitter-api');
 const { log, generateSummary, saveLog } = require('./logger');
 
 /**
- * スケジュール計画を実行
+ * ファイル一覧表示（簡略化版）
  */
 async function planSchedule(options = {}) {
   try {
-    log('=== スケジュール計画開始 ===');
-    
+    log('=== ファイル一覧表示 ===');
+
     const config = await loadConfig(options.configPath);
 
     // フォルダパス決定（CLI オプション > 設定ファイル > デフォルト）
     const snsDir = options.snsDir || config.folders.input;
     const files = await getSnsFiles(snsDir);
-    
+
     if (files.length === 0) {
       log('投稿対象ファイルが見つかりません');
-      return { success: true, schedule: [], files: [] };
+      return { success: true, files: [] };
     }
 
-    const schedule = calculateSchedule(files, config);
-    displaySchedule(schedule);
+    log(`\n=== 投稿予定ファイル一覧 ===`);
+    log(`総件数: ${files.length}件`);
+    log(`次回投稿予定: ${files[0].name}\n`);
+
+    // 最初の10件を表示
+    const displayCount = Math.min(files.length, 10);
+    for (let i = 0; i < displayCount; i++) {
+      const file = files[i];
+      const marker = i === 0 ? '👉' : '  ';
+      const preview = file.content.substring(0, 50);
+      const truncated = file.content.length > 50 ? '...' : '';
+
+      log(`${marker} ${i + 1}. ${file.name}`);
+      log(`   内容: "${preview}${truncated}"`);
+      if (i === 0) {
+        log(`   ⭐ 次回投稿対象`);
+      }
+      log('');
+    }
+
+    if (files.length > 10) {
+      log(`... 他 ${files.length - 10} 件`);
+    }
 
     return {
       success: true,
-      schedule,
       files,
       config
     };
   } catch (error) {
-    log(`計画エラー: ${error.message}`, 'ERROR');
+    log(`表示エラー: ${error.message}`, 'ERROR');
     return { success: false, error: error.message };
   }
 }
 
 /**
- * 投稿実行
+ * 投稿実行（簡略化版）
  */
 async function runPosting(options = {}) {
   try {
     log('=== 投稿実行開始 ===');
-    
+
     const config = await loadConfig(options.configPath);
-    
-    // 設定検証
+
+    // 設定検証（簡略化）
     const configErrors = validateConfig(config);
     if (configErrors.length > 0) {
       log('設定エラー:', 'ERROR');
@@ -62,72 +81,51 @@ async function runPosting(options = {}) {
       return { success: true, results: [] };
     }
 
-    const schedule = calculateSchedule(files, config);
     const isSimulation = !options.dueOnly;
 
-    let itemsToProcess;
-    if (options.dueOnly) {
-      const dueItems = filterDueItems(schedule);
-      if (dueItems.length === 0) {
-        log('期日到来の投稿はありません');
-        return { success: true, results: [] };
-      }
-
-      // 1回の実行で1件のみに制限
-      itemsToProcess = dueItems.slice(0, 1);
-      if (dueItems.length > 1) {
-        log(`期日到来: ${dueItems.length}件中、1件のみ実行（残り${dueItems.length - 1}件は次回実行で処理）`);
-      } else {
-        log(`期日到来: 1件の投稿を実行`);
-      }
-    } else {
-      itemsToProcess = schedule.filter(s => s.scheduled);
-      log('シミュレーションモードで実行');
-    }
+    // シンプルに最初の1件のみ処理
+    const fileToPost = files[0];
+    log(`処理対象: ${fileToPost.name} (${files.length}件中の1件目)`);
 
     const results = [];
 
-    for (const item of itemsToProcess) {
-      try {
-        log(`\n処理中: ${item.file}`);
-        
-        const result = await postTweet(item.content, config.twitterApi, isSimulation);
-        
-        if (result.success) {
-          // 実際の投稿の場合のみファイル移動
-          if (!isSimulation) {
-            await moveToPosted(item.path, true, config.folders.posted);
-          }
-          
-          results.push({
-            file: item.file,
-            success: true,
-            id: result.id,
-            simulation: result.simulation || false,
-            scheduledTime: item.scheduledTime
-          });
-        } else {
-          throw new Error('投稿失敗');
+    try {
+      log(`\n処理中: ${fileToPost.name}`);
+
+      const result = await postTweet(fileToPost.content, config.twitterApi, isSimulation);
+
+      if (result.success) {
+        // 実際の投稿の場合のみファイル移動
+        if (!isSimulation) {
+          await moveToPosted(fileToPost.path, true, config.folders.posted);
         }
 
-      } catch (error) {
-        log(`投稿エラー: ${item.file} - ${error.message}`, 'ERROR');
-        
         results.push({
-          file: item.file,
-          success: false,
-          error: error.message,
-          scheduledTime: item.scheduledTime
+          file: fileToPost.name,
+          success: true,
+          id: result.id,
+          simulation: result.simulation || false
         });
+      } else {
+        throw new Error('投稿失敗');
       }
+
+    } catch (error) {
+      log(`投稿エラー: ${fileToPost.name} - ${error.message}`, 'ERROR');
+
+      results.push({
+        file: fileToPost.name,
+        success: false,
+        error: error.message
+      });
     }
 
     // 結果要約
     generateSummary(results);
-    
+
     // ログ保存
     if (options.saveLog) {
-      const logContent = results.map(r => 
+      const logContent = results.map(r =>
         `${r.file}: ${r.success ? 'SUCCESS' : 'FAILED'} ${r.id || r.error || ''}`
       ).join('\n');
       await saveLog(logContent);

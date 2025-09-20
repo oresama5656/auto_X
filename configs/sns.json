@@ -1,18 +1,4 @@
 {
-  "posting": {
-    "use": true,
-    "startDate": "auto",
-    "skipWeekends": false,
-    "times": [
-      "10:00",
-      "11:00",
-      "12:00",
-      "13:00",
-      "16:00",
-      "18:00",
-      "19:00"
-    ]
-  },
   "folders": {
     "input": "sns",
     "posted": "sns/posted"
