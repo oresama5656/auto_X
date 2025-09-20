@@ -67,12 +67,19 @@ async function runPosting(options = {}) {
 
     let itemsToProcess;
     if (options.dueOnly) {
-      itemsToProcess = filterDueItems(schedule);
-      if (itemsToProcess.length === 0) {
+      const dueItems = filterDueItems(schedule);
+      if (dueItems.length === 0) {
         log('期日到来の投稿はありません');
         return { success: true, results: [] };
       }
-      log(`期日到来: ${itemsToProcess.length}件の投稿を実行`);
+
+      // 1回の実行で1件のみに制限
+      itemsToProcess = dueItems.slice(0, 1);
+      if (dueItems.length > 1) {
+        log(`期日到来: ${dueItems.length}件中、1件のみ実行（残り${dueItems.length - 1}件は次回実行で処理）`);
+      } else {
+        log(`期日到来: 1件の投稿を実行`);
+      }
     } else {
       itemsToProcess = schedule.filter(s => s.scheduled);
       log('シミュレーションモードで実行');

@@ -19,7 +19,8 @@
       "Bash(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M:%S JST')",
       "Bash(TZ:*)",
       "Bash(gh run list:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(TW_API_KEY=test TW_API_KEY_SECRET=test TW_ACCESS_TOKEN=test TW_ACCESS_TOKEN_SECRET=test TZ=\"Asia/Tokyo\" faketime '2025-09-20 11:30' node cli/index.js run --due-only)"
     ],
     "deny": [],
     "ask": []

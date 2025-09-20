@@ -83,8 +83,9 @@ function calculateSchedule(files, config) {
     const scheduledTime = new Date(currentDay);
     scheduledTime.setHours(hours, minutes, 0, 0);
 
-    // 開始日時より前の時刻はスキップ
-    if (scheduledTime < startDate) {
+    // 現在時刻と比較して過去時刻の場合は翌日にスケジュール
+    const now = getJSTDate();
+    if (scheduledTime <= now) {
       timeIndex++;
       if (timeIndex >= times.length) {
         // 今日の全時刻を使い切った場合、翌日へ
