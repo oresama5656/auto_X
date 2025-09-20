@@ -6,9 +6,10 @@ sns/ディレクトリの投稿待ちファイルを管理
 """
 
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, simpledialog
 from pathlib import Path
 from typing import List
+import os
 
 import subprocess
 import threading
@@ -31,6 +32,9 @@ class PostTab:
         self._create_widgets()
         self._setup_layout()
         self._bind_events()
+
+        # 初期化時にファイルリストを読み込み
+        self.refresh_files()
         
     def _create_widgets(self):
         """ウィジェットを作成"""
@@ -66,24 +70,54 @@ class PostTab:
         
         # プレビューフレーム
         self.preview_frame = ttk.LabelFrame(self.frame, text="ファイルプレビュー")
-        
+
+        # プレビューテキストエリア用のコンテナを先に作成
+        self.preview_text_container = ttk.Frame(self.preview_frame)
+
         # プレビューテキストエリア
         self.preview_text = tk.Text(
-            self.preview_frame,
+            self.preview_text_container,
             height=4,
             wrap=tk.WORD,
             font=("Arial", 10),
             state=tk.DISABLED,
             bg="#f8f9fa"
         )
-        
+
         # プレビュースクロールバー
         self.preview_scrollbar = ttk.Scrollbar(
-            self.preview_frame,
+            self.preview_text_container,
             orient="vertical",
             command=self.preview_text.yview
         )
         self.preview_text.config(yscrollcommand=self.preview_scrollbar.set)
+
+        # プレビュー操作ボタンフレーム
+        self.preview_buttons_frame = ttk.Frame(self.preview_frame)
+
+        # 編集ボタン
+        self.edit_button = ttk.Button(
+            self.preview_buttons_frame,
+            text="編集",
+            command=self.edit_file,
+            width=8
+        )
+
+        # 削除ボタン
+        self.delete_button = ttk.Button(
+            self.preview_buttons_frame,
+            text="削除",
+            command=self.delete_file,
+            width=8
+        )
+
+        # 新規作成ボタン
+        self.new_button = ttk.Button(
+            self.preview_buttons_frame,
+            text="新規作成",
+            command=self.create_new_file,
+            width=10
+        )
         
         # ログフレーム
         self.log_frame = ttk.LabelFrame(self.frame, text="実行ログ")
@@ -147,8 +181,19 @@ class PostTab:
         
         # プレビューフレームのレイアウト
         self.preview_frame.pack(fill='x', padx=5, pady=(0, 5))
+
+        # プレビューテキストエリア用のコンテナ
+        self.preview_text_container.pack(fill='both', expand=True, padx=5, pady=(5, 0))
+
+        # プレビューテキストエリア
         self.preview_text.pack(side='left', fill='both', expand=True)
         self.preview_scrollbar.pack(side='right', fill='y')
+
+        # プレビュー操作ボタンのレイアウト
+        self.preview_buttons_frame.pack(fill='x', padx=5, pady=5)
+        self.edit_button.pack(side='left')
+        self.delete_button.pack(side='left', padx=(10, 0))
+        self.new_button.pack(side='left', padx=(10, 0))
         
         # ログフレームのレイアウト
         self.log_frame.pack(fill='both', expand=True, padx=5, pady=(0, 5))
@@ -165,17 +210,24 @@ class PostTab:
         try:
             # 既存のリストをクリア
             self.files_listbox.delete(0, tk.END)
-            
+
             # sns/ディレクトリから投稿待ちファイルを取得
             files = get_sns_files()
-            
+
             # リストボックスに追加（昇順でソート済み）
             for file_name in files:
                 self.files_listbox.insert(tk.END, file_name)
-            
+
+            # ファイルがある場合は最初のファイルを選択
+            if files:
+                self.files_listbox.selection_set(0)
+                self.update_preview()
+            else:
+                self._clear_preview("投稿待ちファイルがありません")
+
             # ステータスを更新
             self._update_status(len(files))
-            
+
         except Exception as e:
             messagebox.showerror("エラー", f"ファイルリストの更新に失敗しました:\n{str(e)}")
             self._update_status(0, f"エラー: {str(e)}")
@@ -329,3 +381,196 @@ class PostTab:
     def _enable_buttons(self):
         """ボタンを有効化"""
         self.plan_button.config(state='normal')
+
+    def edit_file(self):
+        """ファイル編集機能"""
+        selected_file = self.get_selected_file()
+        if not selected_file:
+            messagebox.showwarning("警告", "編集するファイルを選択してください。")
+            return
+
+        try:
+            # ファイルの内容を読み込み
+            file_path = Path.cwd() / 'sns' / selected_file
+            if not file_path.exists():
+                messagebox.showerror("エラー", f"ファイルが見つかりません: {selected_file}")
+                return
+
+            with open(file_path, 'r', encoding='utf-8') as f:
+                original_content = f.read().strip()
+
+            # 編集ダイアログを表示
+            edited_content = self._show_edit_dialog(selected_file, original_content)
+
+            if edited_content is not None and edited_content != original_content:
+                # ファイルに保存
+                with open(file_path, 'w', encoding='utf-8') as f:
+                    f.write(edited_content)
+
+                # プレビューを更新
+                self.update_preview()
+                self.log_message(f"ファイルを編集しました: {selected_file}", "SUCCESS")
+
+        except Exception as e:
+            messagebox.showerror("エラー", f"ファイルの編集に失敗しました:\n{str(e)}")
+            self.log_message(f"編集エラー: {selected_file} - {str(e)}", "ERROR")
+
+    def _show_edit_dialog(self, filename: str, content: str):
+        """ファイル編集ダイアログを表示"""
+        dialog = tk.Toplevel(self.frame)
+        dialog.title(f"ファイル編集 - {filename}")
+        dialog.geometry("600x400")
+        dialog.transient(self.frame.winfo_toplevel())
+        dialog.grab_set()
+
+        # テキストエリア
+        text_frame = ttk.Frame(dialog)
+        text_frame.pack(fill='both', expand=True, padx=10, pady=10)
+
+        text_area = tk.Text(
+            text_frame,
+            wrap=tk.WORD,
+            font=("Arial", 11),
+            height=15
+        )
+        text_area.pack(side='left', fill='both', expand=True)
+
+        # スクロールバー
+        scrollbar = ttk.Scrollbar(text_frame, orient="vertical", command=text_area.yview)
+        scrollbar.pack(side='right', fill='y')
+        text_area.config(yscrollcommand=scrollbar.set)
+
+        # 初期内容を設定
+        text_area.insert(1.0, content)
+
+        # 文字数表示ラベル
+        char_count_frame = ttk.Frame(dialog)
+        char_count_frame.pack(fill='x', padx=10, pady=(0, 5))
+
+        char_count_label = ttk.Label(char_count_frame, text="文字数: 0/280")
+        char_count_label.pack(side='left')
+
+        # 文字数更新関数
+        def update_char_count(event=None):
+            current_content = text_area.get(1.0, 'end-1c')
+            char_count = len(current_content)
+            color = "red" if char_count > 280 else "green"
+            char_count_label.config(
+                text=f"文字数: {char_count}/280",
+                foreground=color
+            )
+
+        # 文字数カウントをリアルタイム更新
+        text_area.bind('<KeyRelease>', update_char_count)
+        text_area.bind('<Button-1>', update_char_count)
+        update_char_count()  # 初期表示
+
+        # ボタンフレーム
+        button_frame = ttk.Frame(dialog)
+        button_frame.pack(fill='x', padx=10, pady=(0, 10))
+
+        result = {'content': None}
+
+        def save_and_close():
+            current_content = text_area.get(1.0, 'end-1c')
+            if len(current_content) > 280:
+                if not messagebox.askyesno("確認",
+                    f"文字数が280文字を超えています ({len(current_content)}文字)。\n保存しますか？"):
+                    return
+            result['content'] = current_content
+            dialog.destroy()
+
+        def cancel():
+            dialog.destroy()
+
+        # ボタン
+        save_button = ttk.Button(button_frame, text="保存", command=save_and_close)
+        save_button.pack(side='right', padx=(5, 0))
+
+        cancel_button = ttk.Button(button_frame, text="キャンセル", command=cancel)
+        cancel_button.pack(side='right')
+
+        # フォーカス設定
+        text_area.focus_set()
+
+        # ダイアログが閉じられるまで待機
+        dialog.wait_window()
+
+        return result['content']
+
+    def delete_file(self):
+        """ファイル削除機能"""
+        selected_file = self.get_selected_file()
+        if not selected_file:
+            messagebox.showwarning("警告", "削除するファイルを選択してください。")
+            return
+
+        # 確認ダイアログ
+        if not messagebox.askyesno("確認",
+            f"ファイルを削除しますか？\n\n{selected_file}\n\nこの操作は取り消せません。"):
+            return
+
+        try:
+            file_path = Path.cwd() / 'sns' / selected_file
+            if file_path.exists():
+                file_path.unlink()  # ファイル削除
+
+                # リストを更新
+                self.refresh_files()
+                self._clear_preview("ファイルが削除されました")
+                self.log_message(f"ファイルを削除しました: {selected_file}", "SUCCESS")
+            else:
+                messagebox.showerror("エラー", f"ファイルが見つかりません: {selected_file}")
+
+        except Exception as e:
+            messagebox.showerror("エラー", f"ファイルの削除に失敗しました:\n{str(e)}")
+            self.log_message(f"削除エラー: {selected_file} - {str(e)}", "ERROR")
+
+    def create_new_file(self):
+        """新規ファイル作成機能"""
+        try:
+            # ファイル名を入力
+            filename = simpledialog.askstring(
+                "新規ファイル作成",
+                "ファイル名を入力してください（.txt は自動で付加されます）:",
+                initialvalue=datetime.datetime.now().strftime("%Y%m%d-%H%M")
+            )
+
+            if not filename:
+                return  # キャンセルされた
+
+            # .txt拡張子を確認・追加
+            if not filename.endswith('.txt'):
+                filename += '.txt'
+
+            file_path = Path.cwd() / 'sns' / filename
+
+            # ファイルが既に存在するかチェック
+            if file_path.exists():
+                messagebox.showerror("エラー", f"ファイルが既に存在します: {filename}")
+                return
+
+            # 編集ダイアログを表示（空の内容で）
+            content = self._show_edit_dialog(filename, "")
+
+            if content is not None:
+                # ファイルを作成
+                with open(file_path, 'w', encoding='utf-8') as f:
+                    f.write(content)
+
+                # リストを更新して新しいファイルを選択
+                self.refresh_files()
+
+                # 新しいファイルを選択状態にする
+                files_count = self.files_listbox.size()
+                for i in range(files_count):
+                    if self.files_listbox.get(i) == filename:
+                        self.files_listbox.selection_set(i)
+                        self.update_preview()
+                        break
+
+                self.log_message(f"新規ファイルを作成しました: {filename}", "SUCCESS")
+
+        except Exception as e:
+            messagebox.showerror("エラー", f"ファイルの作成に失敗しました:\n{str(e)}")
+            self.log_message(f"作成エラー: {str(e)}", "ERROR")

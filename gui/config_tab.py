@@ -10,8 +10,8 @@ from tkinter import ttk, messagebox
 from typing import Dict, Any
 
 from .utils import (
-    load_config, save_config, parse_post_time, parse_fixed_times, 
-    format_fixed_times, validate_time_format
+    load_config, save_config, parse_post_time, parse_fixed_times,
+    format_fixed_times, validate_time_format, read_workflow_times
 )
 from .workflow_optimizer import (
     optimize_cron_for_times, update_workflow_cron, get_execution_frequency_info
@@ -211,11 +211,21 @@ class ConfigTab:
             # 投稿時刻設定（backward compatibility）
             times = posting.get('times') or posting.get('fixedTimes', [])
 
+            # 設定ファイルに投稿時刻がない場合はワークフローから読み取り
+            if not times:
+                workflow_times = read_workflow_times()
+                if workflow_times:
+                    times_str = workflow_times
+                else:
+                    times_str = ""
+            else:
+                times_str = format_fixed_times(times)
+
             # フォルダ設定
             folders = self.config.get('folders', {})
             self.input_folder_var.set(folders.get('input', 'sns'))
             self.posted_folder_var.set(folders.get('posted', 'sns/posted'))
-            self.times_var.set(format_fixed_times(times))
+            self.times_var.set(times_str)
             
             # 共通設定
             self.start_date_var.set(posting.get('startDate', 'auto'))
