@@ -260,7 +260,11 @@ class ConfigTab:
                         "accessTokenSecret": ""
                     }
                 }
-            
+
+            # posting セクションが存在しない場合は作成
+            if 'posting' not in self.config:
+                self.config['posting'] = {}
+
             posting = self.config['posting']
             
             # 設定構築
