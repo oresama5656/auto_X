@@ -1,9 +1,9 @@
 name: X (Twitter) Auto Posting
 
 on:
-  # 毎時00分にスケジュール実行（JST時刻での柔軟な投稿を可能にする）
+  # 設定時刻に投稿実行（JST: 07:00,10:00,11:00,12:00,13:00,16:00,18:00,19:00）
   schedule:
-    - cron: '0 1,2,3,4,7,9,10,22 * * *'
+    - cron: '0 1,2,3,4,7,9,10,11,22 * * *'
   
   # 手動実行
   workflow_dispatch:
@@ -69,7 +69,7 @@ jobs:
         TW_ACCESS_TOKEN: ${{ secrets.TW_ACCESS_TOKEN }}
         TW_ACCESS_TOKEN_SECRET: ${{ secrets.TW_ACCESS_TOKEN_SECRET }}
       run: |
-        echo "=== 本番モード実行 (期日到来分のみ) ==="
+        echo "=== 本番モード実行 (フォルダ内最初のファイルを投稿) ==="
         npm run plan
         node cli/index.js run --due-only --save-log
         
