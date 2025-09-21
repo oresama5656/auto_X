@@ -61,24 +61,6 @@ class ConfigTab:
         ttk.Label(self.times_section, text="即投稿テスト用:", font=("Arial", 8), foreground="blue").grid(row=2, column=1, sticky='w', padx=5)
         ttk.Label(self.times_section, text="15:01,15:02,15:03 (1分間隔で3回)", font=("Arial", 8), foreground="gray").grid(row=3, column=1, sticky='w', padx=5)
         
-        # === 共通設定セクション ===
-        self.common_section = ttk.LabelFrame(self.main_frame, text="共通設定")
-        
-        # startDate
-        ttk.Label(self.common_section, text="開始日:").grid(row=0, column=0, sticky='w', padx=5, pady=2)
-        self.start_date_var = tk.StringVar()
-        self.start_date_entry = ttk.Entry(self.common_section, textvariable=self.start_date_var, width=15)
-        self.start_date_entry.grid(row=0, column=1, padx=5, pady=2)
-        ttk.Label(self.common_section, text="例: auto または 2025-09-12", font=("Arial", 8), foreground="gray").grid(row=0, column=2, sticky='w', padx=5)
-        
-        # skipWeekends
-        self.skip_weekends_var = tk.BooleanVar()
-        self.skip_weekends_check = ttk.Checkbutton(
-            self.common_section,
-            text="週末をスキップ",
-            variable=self.skip_weekends_var
-        )
-        self.skip_weekends_check.grid(row=1, column=0, columnspan=2, sticky='w', padx=5, pady=2)
 
         # === フォルダ設定セクション ===
         self.folder_section = ttk.LabelFrame(self.main_frame, text="フォルダ設定", padding=10)
@@ -172,9 +154,6 @@ class ConfigTab:
         
         # 投稿時刻設定
         self.times_section.pack(fill='x', pady=(0, 10))
-        
-        # 共通設定
-        self.common_section.pack(fill='x', pady=(0, 10))
 
         # フォルダ設定
         self.folder_section.pack(fill='x', pady=(0, 10))
@@ -206,30 +185,16 @@ class ConfigTab:
         """設定ファイルを読み込んでGUIに反映"""
         try:
             self.config = load_config()
-            posting = self.config.get('posting', {})
-            
-            # 投稿時刻設定（backward compatibility）
-            times = posting.get('times') or posting.get('fixedTimes', [])
 
-            # 設定ファイルに投稿時刻がない場合はワークフローから読み取り
-            if not times:
-                workflow_times = read_workflow_times()
-                if workflow_times:
-                    times_str = workflow_times
-                else:
-                    times_str = ""
-            else:
-                times_str = format_fixed_times(times)
+            # 投稿時刻は常にワークフローファイルから読み取り
+            workflow_times = read_workflow_times()
+            times_str = workflow_times if workflow_times else ""
 
             # フォルダ設定
             folders = self.config.get('folders', {})
             self.input_folder_var.set(folders.get('input', 'sns'))
             self.posted_folder_var.set(folders.get('posted', 'sns/posted'))
             self.times_var.set(times_str)
-            
-            # 共通設定
-            self.start_date_var.set(posting.get('startDate', 'auto'))
-            self.skip_weekends_var.set(posting.get('skipWeekends', False))
             
             # ステータス更新
             self.status_label.config(text="設定ファイル: 読み込み完了", foreground="green")
@@ -252,7 +217,7 @@ class ConfigTab:
             if not self.config:
                 # 基本構造を作成
                 self.config = {
-                    "posting": {},
+                    "folders": {},
                     "twitterApi": {
                         "apiKey": "",
                         "apiKeySecret": "",
@@ -261,30 +226,11 @@ class ConfigTab:
                     }
                 }
 
-            # posting セクションが存在しない場合は作成
-            if 'posting' not in self.config:
-                self.config['posting'] = {}
-
-            posting = self.config['posting']
-            
-            # 設定構築
-            posting['use'] = True
-            posting['times'] = parse_fixed_times(self.times_var.get())
-            posting['startDate'] = self.start_date_var.get().strip() or 'auto'
-            posting['skipWeekends'] = self.skip_weekends_var.get()
-
             # フォルダ設定を保存
             if 'folders' not in self.config:
                 self.config['folders'] = {}
             self.config['folders']['input'] = self.input_folder_var.get()
             self.config['folders']['posted'] = self.posted_folder_var.get()
-
-            # 旧設定項目をクリア
-            posting.pop('scheduleType', None)
-            posting.pop('interval', None)
-            posting.pop('postTime', None)
-            posting.pop('autoTimeOffset', None)
-            posting.pop('fixedTimes', None)
             
             # 設定ファイルに保存
             save_config(self.config)

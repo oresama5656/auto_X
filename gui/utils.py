@@ -175,7 +175,7 @@ def read_workflow_times() -> str:
         if not cron_match:
             return ""
 
-        cron_expr = cron_match.group(1)
+        cron_expr = cron_match.group(1).strip()
 
         # cron式をパース (分 時 日 月 曜日)
         parts = cron_expr.split()
@@ -189,13 +189,27 @@ def read_workflow_times() -> str:
         if minutes_str == '*':
             minutes = [0]  # デフォルトは毎時0分
         else:
-            minutes = [int(m) for m in minutes_str.split(',')]
+            try:
+                minutes = [int(m.strip()) for m in minutes_str.split(',') if m.strip()]
+                # 分の範囲チェック
+                for m in minutes:
+                    if not (0 <= m <= 59):
+                        return ""
+            except ValueError:
+                return ""
 
         # 時を解析
         if hours_str == '*':
             return ""  # 毎時実行は想定外
 
-        utc_hours = [int(h) for h in hours_str.split(',')]
+        try:
+            utc_hours = [int(h.strip()) for h in hours_str.split(',') if h.strip()]
+            # 時の範囲チェック
+            for h in utc_hours:
+                if not (0 <= h <= 23):
+                    return ""
+        except ValueError:
+            return ""
 
         # UTC→JST変換して時刻リストを生成
         jst_times = []

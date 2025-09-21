@@ -11,11 +11,11 @@ program
   .version('1.0.0');
 
 /**
- * スケジュール計画コマンド
+ * ファイル一覧表示コマンド
  */
 program
   .command('plan')
-  .description('投稿スケジュールを表示')
+  .description('投稿待ちファイル一覧を表示')
   .option('-c, --config <path>', '設定ファイルパス', 'configs/sns.json')
   .option('-s, --sns-dir <path>', 'SNSディレクトリパス')
   .action(async (options) => {
@@ -42,7 +42,7 @@ program
   .description('投稿を実行')
   .option('-c, --config <path>', '設定ファイルパス', 'configs/sns.json')
   .option('-s, --sns-dir <path>', 'SNSディレクトリパス')
-  .option('--due-only', '期日到来分のみ投稿（実投稿）', false)
+  .option('--due-only', '実投稿モード（シミュレーションではない）', false)
   .option('--save-log', 'ログをファイルに保存', false)
   .action(async (options) => {
     try {

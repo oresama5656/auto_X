@@ -21,9 +21,9 @@ async function planSchedule(options = {}) {
       return { success: true, files: [] };
     }
 
-    log(`\n=== 投稿予定ファイル一覧 ===`);
+    log(`\n=== 投稿待ちファイル一覧 ===`);
     log(`総件数: ${files.length}件`);
-    log(`次回投稿予定: ${files[0].name}\n`);
+    log(`次回投稿ファイル: ${files[0].name}\n`);
 
     // 最初の10件を表示
     const displayCount = Math.min(files.length, 10);
@@ -36,7 +36,7 @@ async function planSchedule(options = {}) {
       log(`${marker} ${i + 1}. ${file.name}`);
       log(`   内容: "${preview}${truncated}"`);
       if (i === 0) {
-        log(`   ⭐ 次回投稿対象`);
+        log(`   ⭐ 次回投稿ファイル`);
       }
       log('');
     }
@@ -83,9 +83,9 @@ async function runPosting(options = {}) {
 
     const isSimulation = !options.dueOnly;
 
-    // シンプルに最初の1件のみ処理
+    // シンプルに最初の1件のみ処理（フォルダ内の最初のファイル）
     const fileToPost = files[0];
-    log(`処理対象: ${fileToPost.name} (${files.length}件中の1件目)`);
+    log(`投稿ファイル: ${fileToPost.name} (${files.length}件中の1件目)`);
 
     const results = [];
 
