@@ -1,7 +1,7 @@
 {
   "name": "auto-x-posting",
   "version": "1.0.0",
-  "description": "Automated X (Twitter) posting system with GitHub Actions",
+  "description": "Automated X (Twitter) posting system with GitHub Actions and Draft Manager",
   "main": "cli/index.js",
   "type": "commonjs",
   "scripts": {
@@ -18,7 +18,10 @@
     "x",
     "automation",
     "github-actions",
-    "social-media"
+    "social-media",
+    "draft-manager",
+    "gui-tools",
+    "content-management"
   ],
   "author": "",
   "license": "MIT",
