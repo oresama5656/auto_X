@@ -1,4 +1,7 @@
 {
+  "posting": {
+    "enabled": false
+  },
   "folders": {
     "input": "sns",
     "posted": "sns/posted"

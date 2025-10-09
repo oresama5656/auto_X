@@ -3,7 +3,7 @@ name: X (Twitter) Auto Posting
 on:
   # 設定時刻に投稿実行（JST: 07:00,10:00,11:00,12:00,13:00,16:00,18:00,19:00）
   schedule:
-    - cron: '0 1,2,3,4,7,9,10,11,22 * * *'
+    - cron: '0 * * * *'
   
   # 手動実行
   workflow_dispatch:
